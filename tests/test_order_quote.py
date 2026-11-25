@@ -8,6 +8,8 @@ from pathlib import Path
 from checkout import total_cents
 from order_quote import InvalidItemError, quote_order
 
+ROOT = Path(__file__).resolve().parent.parent
+
 
 class TestQuoteOrder(unittest.TestCase):
     def test_empty_order_returns_zero(self):
@@ -52,24 +54,17 @@ class TestQuoteOrder(unittest.TestCase):
 
 class TestQuoteOrderCli(unittest.TestCase):
     def test_cli_prints_total_cents_json(self):
-        path = Path("examples/order.json")
-        expected = 705
-        if not path.exists():
-            path = Path(tempfile.gettempdir()) / "order_quote_example.json"
-            path.write_text(
-                json.dumps([{"unit_price": "2.35", "quantity": 3}]),
-                encoding="utf-8",
-            )
-            self.addCleanup(path.unlink)
+        input_path = ROOT / "examples" / "order.json"
+        script_path = ROOT / "order_quote.py"
 
         result = subprocess.run(
-            [sys.executable, "order_quote.py", str(path)],
+            [sys.executable, str(script_path), str(input_path)],
             capture_output=True,
             text=True,
             check=False,
         )
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(result.stdout, json.dumps({"total_cents": expected}) + "\n")
+        self.assertEqual(result.stdout, json.dumps({"total_cents": 705}) + "\n")
 
     def test_cli_rejects_invalid_input_with_nonzero_exit(self):
         with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False) as handle:
@@ -78,13 +73,14 @@ class TestQuoteOrderCli(unittest.TestCase):
         self.addCleanup(Path(path).unlink)
 
         result = subprocess.run(
-            [sys.executable, "order_quote.py", path],
+            [sys.executable, str(ROOT / "order_quote.py"), path],
             capture_output=True,
             text=True,
             check=False,
         )
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("unit_price", result.stderr)
+
 
 
 class TestCheckoutRegression(unittest.TestCase):
